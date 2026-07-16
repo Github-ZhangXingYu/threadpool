@@ -1,82 +1,49 @@
 #include <iostream>
-#include <thread>
 #include <chrono>
-#include <mutex>
+#include <atomic>
 #include "thread_pool.h"
 
-#ifdef _WIN32
-#include <windows.h>
-#endif
-
-static std::mutex cout_mutex;
-#define LOCKED_LOG(msg) do { \
-    std::lock_guard<std::mutex> lock(cout_mutex); \
-    std::cout << msg; \
-} while(0)
-
 int main() {
-#ifdef _WIN32
-    SetConsoleOutputCP(CP_UTF8);
-#endif
-    std::cout << "=== 普通任务队列演示 ===" << std::endl;
-    {
-        ThreadPool pool(false);
-        pool.start();
+    constexpr int TASK_COUNT = 1000;
+    constexpr int THREAD_COUNT = 4;
 
-        for (int i = 0; i < 8; ++i) {
-            pool.submit([i] {
-                LOCKED_LOG("任务 " << i << " 由线程 " << std::this_thread::get_id()
-                           << " 执行" << std::endl);
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            });
-        }
+    ThreadPool pool(false);
+    pool.start();
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        pool.stop();
+    std::atomic<uint64_t> checksum{0};
+    std::atomic<int> completed{0};
+
+    auto t0 = std::chrono::high_resolution_clock::now();
+
+    for (int i = 0; i < TASK_COUNT; ++i) {
+        pool.submit([i, &checksum, &completed] {
+            // 每个任务根据自身 ID 做不同数量的计算，模拟真实负载
+            // 任务 i: 迭代 i * 50 + 100 次，计算累加
+            uint64_t local = 0;
+            int loops = i * 50 + 100;
+            for (int k = 0; k < loops; ++k) {
+                local += k * k;
+            }
+            checksum.fetch_add(local, std::memory_order_relaxed);
+            completed.fetch_add(1, std::memory_order_relaxed);
+        });
     }
 
-    std::cout << "\n=== 优先队列演示 (数字越大优先级越高) ===" << std::endl;
-    {
-        ThreadPool pool(true);
-        pool.start();
+    // stop() 会排空所有剩余任务
+    pool.stop();
 
-        pool.submit([] { LOCKED_LOG("低优先级任务 [0]" << std::endl); }, 0);
-        pool.submit([] { LOCKED_LOG("中优先级任务 [5]" << std::endl); }, 5);
-        pool.submit([] { LOCKED_LOG("高优先级任务 [10]" << std::endl); }, 10);
-        pool.submit([] { LOCKED_LOG("超低优先级任务 [-5]" << std::endl); }, -5);
+    auto t1 = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        pool.stop();
-    }
+    std::cout << "=== ThreadPool 基准测试 ===" << std::endl;
+    std::cout << "线程数:     " << THREAD_COUNT << std::endl;
+    std::cout << "任务数:     " << TASK_COUNT << std::endl;
+    std::cout << "完成数:     " << completed.load() << std::endl;
+    std::cout << "总耗时:     " << elapsed.count() << " μs ("
+              << elapsed.count() / 1000.0 << " ms)" << std::endl;
+    std::cout << "吞吐量:     " << TASK_COUNT * 1'000'000 / elapsed.count()
+              << " 任务/秒" << std::endl;
+    std::cout << "校验和:     " << checksum.load() << std::endl;
 
-    std::cout << "\n=== 性能测试 ===" << std::endl;
-    {
-        ThreadPool pool(false);
-        pool.start();
-
-        auto start = std::chrono::high_resolution_clock::now();
-        const int TASK_COUNT = 1000;
-
-        for (int i = 0; i < TASK_COUNT; ++i) {
-            pool.submit([i] {
-                volatile int sum = 0;
-                for (int j = 0; j < 1000; ++j) {
-                    sum += j;
-                }
-            });
-        }
-
-        while (pool.getQueueSize() > 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
-
-        auto end = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-
-        std::cout << "完成 " << TASK_COUNT << " 个任务，耗时 " << duration.count() << " ms" << std::endl;
-        pool.stop();
-    }
-
-    std::cout << "\n演示结束" << std::endl;
     return 0;
 }
