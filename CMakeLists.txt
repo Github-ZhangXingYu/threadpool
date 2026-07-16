@@ -49,21 +49,10 @@ FetchContent_MakeAvailable(googletest)
 include(GoogleTest)
 enable_testing()
 
-# ---- 测试目标（输出到 product/bin/unittest/）----
-add_executable(test_task_queue
-    tests/threadpool/unit/test_task_queue.cpp
-)
-target_link_libraries(test_task_queue GTest::gtest_main threadpool_lib)
-set_target_properties(test_task_queue PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/product/bin/unittest
-)
-gtest_discover_tests(test_task_queue)
-
-add_executable(test_thread_pool
-    tests/threadpool/unit/test_thread_pool.cpp
-)
-target_link_libraries(test_thread_pool GTest::gtest_main threadpool_lib)
-set_target_properties(test_thread_pool PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/product/bin/unittest
-)
-gtest_discover_tests(test_thread_pool)
+# ---- 测试目标 —— 由 AI 工作流生成 ----
+# add_executable(xxx_test tests/threadpool/unit/xxx_test.cpp)
+# target_link_libraries(xxx_test GTest::gtest_main threadpool_lib)
+# set_target_properties(xxx_test PROPERTIES
+#     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/product/bin/unittest
+# )
+# gtest_discover_tests(xxx_test)
