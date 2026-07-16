@@ -5,3 +5,11 @@
 product/
 build/
 .vscode/
+
+# AI 测试工作流 — 运行时产物
+ai_workflow/state/
+ai_workflow/reports/*.html
+
+# Python
+__pycache__/
+*.pyc
