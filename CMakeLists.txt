@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.24)
 project(threadpool VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -40,6 +40,7 @@ FetchContent_Declare(
     googletest
     URL https://github.com/google/googletest/archive/refs/tags/v1.15.2.zip
     SOURCE_DIR ${CMAKE_BINARY_DIR}/_deps/googletest-src
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 set(BUILD_GMOCK OFF CACHE INTERNAL "")
 FetchContent_MakeAvailable(googletest)
